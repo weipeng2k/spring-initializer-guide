@@ -18,6 +18,7 @@
 
     <modules>
         <module>initializer-generator-version</module>
+        <module>initializer-generator-io</module>
     </modules>
 
     <dependencyManagement>
