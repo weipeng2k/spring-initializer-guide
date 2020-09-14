@@ -19,6 +19,13 @@
     <modules>
         <module>initializer-generator-version</module>
         <module>initializer-generator-io</module>
+        <module>initializer-generator-language</module>
+        <module>initializer-generator-buildsystem</module>
+        <module>initializer-generator-project</module>
+        <module>initializer-metadata</module>
+        <module>initializer-generator-spring-ignore</module>
+        <module>initializer-generator-spring-configuration</module>
+        <module>initializer-generator-spring-code</module>
     </modules>
 
     <dependencyManagement>
@@ -39,6 +46,16 @@
                 <groupId>junit</groupId>
                 <artifactId>junit</artifactId>
                 <version>4.11</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>3.9</version>
+            </dependency>
+            <dependency>
+                <groupId>org.yaml</groupId>
+                <artifactId>snakeyaml</artifactId>
+                <version>1.26</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
