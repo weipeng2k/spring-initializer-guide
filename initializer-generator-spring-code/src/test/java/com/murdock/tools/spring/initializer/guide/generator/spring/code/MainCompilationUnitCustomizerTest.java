@@ -6,17 +6,17 @@ import io.spring.initializr.generator.io.IndentingWriterFactory;
 import io.spring.initializr.generator.io.SimpleIndentStrategy;
 import io.spring.initializr.generator.language.Annotation;
 import io.spring.initializr.generator.language.Language;
+import io.spring.initializr.generator.language.Parameter;
 import io.spring.initializr.generator.language.java.JavaCompilationUnit;
 import io.spring.initializr.generator.language.java.JavaMethodDeclaration;
 import io.spring.initializr.generator.language.java.JavaMethodInvocation;
 import io.spring.initializr.generator.language.java.JavaReturnStatement;
-import io.spring.initializr.generator.language.java.JavaSourceCode;
 import io.spring.initializr.generator.language.java.JavaTypeDeclaration;
 import io.spring.initializr.generator.packaging.Packaging;
 import io.spring.initializr.generator.packaging.jar.JarPackaging;
 import io.spring.initializr.generator.project.MutableProjectDescription;
 import io.spring.initializr.generator.project.ProjectDirectoryFactory;
-import io.spring.initializr.generator.spring.code.MainSourceCodeCustomizer;
+import io.spring.initializr.generator.spring.code.MainCompilationUnitCustomizer;
 import io.spring.initializr.generator.spring.code.SourceCodeProjectGenerationConfiguration;
 import io.spring.initializr.generator.spring.code.java.JavaProjectGenerationConfiguration;
 import io.spring.initializr.generator.test.project.ProjectAssetTester;
@@ -32,22 +32,22 @@ import java.nio.file.Path;
 
 /**
  * <pre>
- * JavaSourceCode      是源代码
- * CompilationUnit     是编译单元
- * JavaTypeDeclaration 是类型声明
+ *  JavaSourceCode      是源代码
+ *  CompilationUnit     是编译单元
+ *  JavaTypeDeclaration 是类型声明
  *
- * MainSourceCodeCustomizer 是针对源码层面的定制
+ *  MainCompilationUnitCustomizer 是针对编译单元层面的定制，且是Application主类
  * </pre>
  *
- * @author weipeng2k 2020年09月13日 下午21:13:24
+ * @author weipeng2k 2020年09月14日 下午12:44:34
  */
-public class MainSourceCodeCustomizerTest {
+public class MainCompilationUnitCustomizerTest {
     private final ProjectAssetTester projectTester = new ProjectAssetTester().withConfiguration(
             SourceCodeProjectGenerationConfiguration.class, JavaProjectGenerationConfiguration.class,
-            MainSourceCodeCustomizerTest.Config.class);
+            MainCompilationUnitCustomizerTest.Config.class);
 
     @Test
-    public void main_source_code() {
+    public void main_compilation_unit() {
         MutableProjectDescription description = new MutableProjectDescription();
         description.setPackaging(Packaging.forId("jar"));
         description.setPackageName("com.foo");
@@ -64,51 +64,49 @@ public class MainSourceCodeCustomizerTest {
     @Configuration
     static class Config {
 
-        /**
-         * <pre>
-         * 声明一个接口HelloWorld
-         *
-         * </pre>
-         */
         @Bean
         @ConditionalOnPackaging(JarPackaging.ID)
-        public MainSourceCodeCustomizer<JavaTypeDeclaration, JavaCompilationUnit, JavaSourceCode> mainSourceCodeCustomizer1() {
-            return (javaSourceCode) -> {
-                JavaCompilationUnit helloWorldService = javaSourceCode.createCompilationUnit("com.foo.service",
-                        "HelloWorldService");
-                JavaMethodDeclaration.Builder builder = JavaMethodDeclaration.method("hello");
-                JavaMethodDeclaration javaMethodDeclaration = builder.modifiers(Modifier.ABSTRACT | Modifier.PUBLIC)
-                        .returning("java.lang.String")
-                        .body();
-                JavaTypeDeclaration type = helloWorldService.createTypeDeclaration("HelloWorldService");
-                type.modifiers(Modifier.PUBLIC | Modifier.INTERFACE);
-                type.addMethodDeclaration(javaMethodDeclaration);
+        public MainCompilationUnitCustomizer<JavaTypeDeclaration, JavaCompilationUnit> mainCompilationUnitCustomizer1() {
+            return new MainCompilationUnitCustomizer<JavaTypeDeclaration, JavaCompilationUnit>() {
+                @Override
+                public void customize(JavaCompilationUnit javaCompilationUnit) {
+                    JavaTypeDeclaration t1 = javaCompilationUnit.createTypeDeclaration("T1");
+                    t1.annotate(Annotation.name("org.springframework.stereotype.Service"));
+                    JavaMethodDeclaration.Builder builder = JavaMethodDeclaration.method("t1");
+                    JavaMethodDeclaration body = builder.modifiers(Modifier.PRIVATE)
+                            .returning("T1")
+                            .parameters(new Parameter("java.lang.String", "name"))
+                            .body(new JavaReturnStatement(new JavaMethodInvocation("this", "t1")));
+                    t1.addMethodDeclaration(body);
+                }
+
+                @Override
+                public int getOrder() {
+                    return 1;
+                }
             };
         }
 
-        /**
-         * <pre>
-         * 声明一个接口HelloWorld
-         * </pre>
-         */
         @Bean
         @ConditionalOnPackaging(JarPackaging.ID)
-        public MainSourceCodeCustomizer<JavaTypeDeclaration, JavaCompilationUnit, JavaSourceCode> mainSourceCodeCustomizer2() {
-            return (javaSourceCode) -> {
-                JavaCompilationUnit helloWorldService = javaSourceCode.createCompilationUnit("com.foo.service.impl",
-                        "HelloWorldServiceImpl");
+        public MainCompilationUnitCustomizer<JavaTypeDeclaration, JavaCompilationUnit> mainCompilationUnitCustomizer2() {
+            return new MainCompilationUnitCustomizer<JavaTypeDeclaration, JavaCompilationUnit>() {
+                @Override
+                public void customize(JavaCompilationUnit javaCompilationUnit) {
+                    JavaTypeDeclaration t2 = javaCompilationUnit.createTypeDeclaration("T2");
+                    t2.annotate(Annotation.name("org.springframework.stereotype.Service"));
+                    JavaMethodDeclaration.Builder builder = JavaMethodDeclaration.method("t2");
+                    JavaMethodDeclaration body = builder.modifiers(Modifier.PRIVATE)
+                            .returning("T1")
+                            .parameters(new Parameter("java.lang.String", "name"))
+                            .body(new JavaReturnStatement(new JavaMethodInvocation("this", "t2")));
+                    t2.addMethodDeclaration(body);
+                }
 
-                JavaMethodDeclaration.Builder builder = JavaMethodDeclaration.method("hello");
-                JavaMethodDeclaration javaMethodDeclaration = builder.modifiers(Modifier.PUBLIC)
-                        .returning("java.lang.String")
-                        .body(new JavaReturnStatement(new JavaMethodInvocation("\"hello\"", "toUpperCase")));
-                javaMethodDeclaration.annotate(Annotation.name("java.lang.Override"));
-
-                JavaTypeDeclaration type = helloWorldService.createTypeDeclaration("HelloWorldServiceImpl");
-                type.addMethodDeclaration(javaMethodDeclaration);
-                type.modifiers(Modifier.PUBLIC);
-                type.extend("com.foo.service.HelloWorldService");
-                type.annotate(Annotation.name("org.springframework.stereotype.Service(\"helloWorldService\")"));
+                @Override
+                public int getOrder() {
+                    return 2;
+                }
             };
         }
 

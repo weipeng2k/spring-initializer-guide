@@ -6,17 +6,16 @@ import io.spring.initializr.generator.io.IndentingWriterFactory;
 import io.spring.initializr.generator.io.SimpleIndentStrategy;
 import io.spring.initializr.generator.language.Annotation;
 import io.spring.initializr.generator.language.Language;
-import io.spring.initializr.generator.language.java.JavaCompilationUnit;
+import io.spring.initializr.generator.language.Parameter;
 import io.spring.initializr.generator.language.java.JavaMethodDeclaration;
 import io.spring.initializr.generator.language.java.JavaMethodInvocation;
 import io.spring.initializr.generator.language.java.JavaReturnStatement;
-import io.spring.initializr.generator.language.java.JavaSourceCode;
 import io.spring.initializr.generator.language.java.JavaTypeDeclaration;
 import io.spring.initializr.generator.packaging.Packaging;
 import io.spring.initializr.generator.packaging.jar.JarPackaging;
 import io.spring.initializr.generator.project.MutableProjectDescription;
 import io.spring.initializr.generator.project.ProjectDirectoryFactory;
-import io.spring.initializr.generator.spring.code.MainSourceCodeCustomizer;
+import io.spring.initializr.generator.spring.code.MainApplicationTypeCustomizer;
 import io.spring.initializr.generator.spring.code.SourceCodeProjectGenerationConfiguration;
 import io.spring.initializr.generator.spring.code.java.JavaProjectGenerationConfiguration;
 import io.spring.initializr.generator.test.project.ProjectAssetTester;
@@ -32,22 +31,23 @@ import java.nio.file.Path;
 
 /**
  * <pre>
- * JavaSourceCode      是源代码
- * CompilationUnit     是编译单元
- * JavaTypeDeclaration 是类型声明
+ *  JavaSourceCode      是源代码
+ *  CompilationUnit     是编译单元
+ *  JavaTypeDeclaration 是类型声明
  *
- * MainSourceCodeCustomizer 是针对源码层面的定制
+ *  MainApplicationTypeCustomizer 是针对编译单元层面的定制，且是Application主类
  * </pre>
  *
- * @author weipeng2k 2020年09月13日 下午21:13:24
+ * @author weipeng2k 2020年09月14日 下午13:40:31
  */
-public class MainSourceCodeCustomizerTest {
+public class MainApplicationTypeCustomizerTest {
+
     private final ProjectAssetTester projectTester = new ProjectAssetTester().withConfiguration(
             SourceCodeProjectGenerationConfiguration.class, JavaProjectGenerationConfiguration.class,
-            MainSourceCodeCustomizerTest.Config.class);
+            MainApplicationTypeCustomizerTest.Config.class);
 
     @Test
-    public void main_source_code() {
+    public void main_compilation_unit() {
         MutableProjectDescription description = new MutableProjectDescription();
         description.setPackaging(Packaging.forId("jar"));
         description.setPackageName("com.foo");
@@ -64,54 +64,27 @@ public class MainSourceCodeCustomizerTest {
     @Configuration
     static class Config {
 
-        /**
-         * <pre>
-         * 声明一个接口HelloWorld
-         *
-         * </pre>
-         */
         @Bean
         @ConditionalOnPackaging(JarPackaging.ID)
-        public MainSourceCodeCustomizer<JavaTypeDeclaration, JavaCompilationUnit, JavaSourceCode> mainSourceCodeCustomizer1() {
-            return (javaSourceCode) -> {
-                JavaCompilationUnit helloWorldService = javaSourceCode.createCompilationUnit("com.foo.service",
-                        "HelloWorldService");
-                JavaMethodDeclaration.Builder builder = JavaMethodDeclaration.method("hello");
-                JavaMethodDeclaration javaMethodDeclaration = builder.modifiers(Modifier.ABSTRACT | Modifier.PUBLIC)
-                        .returning("java.lang.String")
-                        .body();
-                JavaTypeDeclaration type = helloWorldService.createTypeDeclaration("HelloWorldService");
-                type.modifiers(Modifier.PUBLIC | Modifier.INTERFACE);
-                type.addMethodDeclaration(javaMethodDeclaration);
+        public MainApplicationTypeCustomizer<JavaTypeDeclaration> mainApplicationTypeCustomizer() {
+            return new MainApplicationTypeCustomizer<JavaTypeDeclaration>() {
+                @Override
+                public void customize(JavaTypeDeclaration javaTypeDeclaration) {
+                    javaTypeDeclaration.annotate(Annotation.name("org.springframework.stereotype.Service"));
+                    JavaMethodDeclaration.Builder builder = JavaMethodDeclaration.method("t1");
+                    JavaMethodDeclaration body = builder.modifiers(Modifier.PRIVATE)
+                            .returning("T1")
+                            .parameters(new Parameter("java.lang.String", "name"))
+                            .body(new JavaReturnStatement(new JavaMethodInvocation("this", "t1")));
+                    javaTypeDeclaration.addMethodDeclaration(body);
+                }
+
+                @Override
+                public int getOrder() {
+                    return 1;
+                }
             };
         }
-
-        /**
-         * <pre>
-         * 声明一个接口HelloWorld
-         * </pre>
-         */
-        @Bean
-        @ConditionalOnPackaging(JarPackaging.ID)
-        public MainSourceCodeCustomizer<JavaTypeDeclaration, JavaCompilationUnit, JavaSourceCode> mainSourceCodeCustomizer2() {
-            return (javaSourceCode) -> {
-                JavaCompilationUnit helloWorldService = javaSourceCode.createCompilationUnit("com.foo.service.impl",
-                        "HelloWorldServiceImpl");
-
-                JavaMethodDeclaration.Builder builder = JavaMethodDeclaration.method("hello");
-                JavaMethodDeclaration javaMethodDeclaration = builder.modifiers(Modifier.PUBLIC)
-                        .returning("java.lang.String")
-                        .body(new JavaReturnStatement(new JavaMethodInvocation("\"hello\"", "toUpperCase")));
-                javaMethodDeclaration.annotate(Annotation.name("java.lang.Override"));
-
-                JavaTypeDeclaration type = helloWorldService.createTypeDeclaration("HelloWorldServiceImpl");
-                type.addMethodDeclaration(javaMethodDeclaration);
-                type.modifiers(Modifier.PUBLIC);
-                type.extend("com.foo.service.HelloWorldService");
-                type.annotate(Annotation.name("org.springframework.stereotype.Service(\"helloWorldService\")"));
-            };
-        }
-
 
         /**
          * <pre>
